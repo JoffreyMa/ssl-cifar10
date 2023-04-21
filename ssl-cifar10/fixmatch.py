@@ -47,11 +47,16 @@ class FixMatch:
             loss.backward()
             self.optimizer.step()
 
+    '''
     def evaluate(self):
         self.model.eval()
         test_loss = 0
         correct = 0
         total = 0
+
+        # Store true and predicted labels
+        y_true = []
+        y_pred = []
 
         with torch.no_grad():
             for data, target in self.test_loader:
@@ -65,4 +70,5 @@ class FixMatch:
         test_loss /= total
         accuracy = 100.0 * correct / total
 
-        return test_loss, accuracy
+        return test_loss, accuracy, y_true, y_pred
+        '''

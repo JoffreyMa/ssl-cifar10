@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader, Dataset
 from wide_resnet import WideResNet
 from fixmatch import FixMatch
 from utils import create_data_loaders
+from evaluate import evaluate
+import wandb
 
 def download_cifar10(path='./data'):
     if not os.path.exists(path):
@@ -19,26 +21,68 @@ def download_cifar10(path='./data'):
 
 
 def main():
+    # Parameters
+    # Optimizer
+    lr = 0.03
+    momentum = 0.9
+    weight_decay = 5e-4
+    # Training
+    nb_epochs = 10
+    # Dataloader
+    batch_size=50
+    ratio_unlabeled_labeled=7
+    seed=42
+    # Model
+    depth=28 
+    widen_factor=2
+    dropout_rate=0.3
+    num_classes=10
+
+    # Set device for computation
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+
+    # Download data if necessary
     download_cifar10()
     
+    # Instanciate train and test sets
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=False, transform=transforms.ToTensor())
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transforms.ToTensor())
     
-    labeled_loader, unlabeled_loader, test_loader = create_data_loaders(trainset, testset, batch_size=50, ratio_unlabeled_labeled=7, seed=42)
+    # Instanciate data loaders for WideResNet with FixMatch
+    labeled_loader, unlabeled_loader, test_loader = create_data_loaders(trainset, testset, batch_size=batch_size, ratio_unlabeled_labeled=ratio_unlabeled_labeled, seed=seed)
     
-    model = WideResNet(depth=28, widen_factor=2, dropout_rate=0.3, num_classes=10)
+    # Declare WideResNet
+    model = WideResNet(depth=depth, widen_factor=widen_factor, dropout_rate=dropout_rate, num_classes=num_classes)
     model.to(device)
     
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.03, momentum=0.9, weight_decay=5e-4)
+    # Declare the optimizer
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     
+    # Declare the FixMatch
     fixmatch = FixMatch(model, device, optimizer, labeled_loader, unlabeled_loader, test_loader)
+
+    # start a new wandb run to track this script
+    '''
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="ssl-cifar10",
+        
+        # track hyperparameters and run metadata
+        config={
+        "learning_rate": lr,
+        "architecture": "WideResNet-28-2",
+        "dataset": "CIFAR-10",
+        "epochs": nb_epochs,
+        }
+    )
+    '''
     
-    for epoch in range(1, 101):
+    for epoch in range(nb_epochs):
         fixmatch.train()
-        test_loss, test_acc = fixmatch.evaluate()
-        print(f"Epoch: {epoch}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.4f}")
+        test_loss, test_accuracy, test_precision, test_recall, test_f1 = evaluate(model, test_loader, device)
+        print(f"Epoch: {epoch}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Test Precision: {test_precision:.4f}, Test Recall: {test_recall:.4f}, Test F1: {test_f1:.4f}")
+        # log metrics to wandb
+        #wandb.log({"Test Accuracy": test_acc, "Test Loss": test_loss})
         
     torch.save(model.state_dict(), "fixmatch_wide_resnet.pth")
 

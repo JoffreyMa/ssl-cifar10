@@ -23,8 +23,8 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
     
     if os.path.exists(annotated_data_path) and os.path.exists(non_annotated_data_path):
         # Load the transformed data
-        annotated_data = torch.load(annotated_data)
-        non_annotated_data = torch.load(non_annotated_data)
+        annotated_data = torch.load(annotated_data_path)
+        non_annotated_data = torch.load(non_annotated_data_path)
     else:
         # Select 250 random annotated images
         indices = np.random.choice(len(trainset), 250, replace=False)
