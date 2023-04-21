@@ -4,15 +4,17 @@ import torch
 import torch.nn.functional as F
 
 class FixMatch:
-    def __init__(self, model, device, optimizer, labeled_loader, unlabeled_loader, test_loader, lambda_u=1, threshold=0.95):
+    def __init__(self, model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u=1, threshold=0.95):
         self.model = model
         self.device = device
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.labeled_loader = labeled_loader
         self.unlabeled_loader = unlabeled_loader
         self.test_loader = test_loader
         self.lambda_u = lambda_u
         self.threshold = threshold
+        self.current_step = 0
 
     def train(self):
         self.model.train()
@@ -20,6 +22,9 @@ class FixMatch:
             inputs_x, targets_x = inputs_x.to(self.device), targets_x.to(self.device)
             inputs_u_weakly_augmented, inputs_u_strongly_augmented = inputs_u_weakly_augmented.to(self.device).float(), inputs_u_strongly_augmented.to(self.device).float()
             
+            # Update learning rate based on cosine decay
+            self.scheduler.step()
+            # Reset gradient
             self.optimizer.zero_grad()
 
             # Forward pass for labeled data
@@ -46,29 +51,6 @@ class FixMatch:
             # Backward pass and optimization
             loss.backward()
             self.optimizer.step()
-
-    '''
-    def evaluate(self):
-        self.model.eval()
-        test_loss = 0
-        correct = 0
-        total = 0
-
-        # Store true and predicted labels
-        y_true = []
-        y_pred = []
-
-        with torch.no_grad():
-            for data, target in self.test_loader:
-                data, target = data.to(self.device), target.to(self.device)
-                output = self.model(data)
-                test_loss += F.cross_entropy(output, target, reduction='sum').item()
-                pred = output.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
-                total += target.size(0)
-
-        test_loss /= total
-        accuracy = 100.0 * correct / total
-
-        return test_loss, accuracy, y_true, y_pred
-        '''
+            
+            # Increment step counter for scheduler
+            self.current_step += 1

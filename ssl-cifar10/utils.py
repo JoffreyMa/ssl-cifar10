@@ -2,9 +2,8 @@
 
 import numpy as np
 import torch
-import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import os
 
 def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, seed):
@@ -34,6 +33,11 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
         mask = np.ones(len(trainset), dtype=bool)
         mask[indices] = False
         non_annotated_data = torch.utils.data.Subset(trainset, np.arange(len(trainset))[mask])
+
+        # Apply base augmentation to all data
+        # TODO apply on all data 
+        # TODO option to apply transformation as training goes (longer but better)
+        generic_transform = transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10)
     
         # Apply data augmentation to non-annotated data and replace the labels
         unlabeled_weakly_transform = transforms.Compose([
@@ -43,9 +47,9 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
         ])
         unlabeled_strongly_transform = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomCrop(32, padding=4),
+            # Pytorch RandAugment does approximately the same as in the fixmatch paper  
+            # https://pytorch.org/vision/main/_modules/torchvision/transforms/autoaugment.html#RandAugment
+            transforms.RandAugment(num_ops=2, magnitude = 9, num_magnitude_bins= 31), 
             transforms.ToTensor()
         ])
 

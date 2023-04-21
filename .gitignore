@@ -130,3 +130,9 @@ dmypy.json
 
 # Data
 data/
+
+# Models
+models/
+
+# Weights and Biases
+wandb/

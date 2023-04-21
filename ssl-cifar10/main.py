@@ -10,6 +10,7 @@ from fixmatch import FixMatch
 from utils import create_data_loaders
 from evaluate import evaluate
 import wandb
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 def download_cifar10(path='./data'):
     if not os.path.exists(path):
@@ -27,7 +28,7 @@ def main():
     momentum = 0.9
     weight_decay = 5e-4
     # Training
-    nb_epochs = 10
+    nb_epochs = 1000
     # Dataloader
     batch_size=50
     ratio_unlabeled_labeled=7
@@ -57,12 +58,16 @@ def main():
     
     # Declare the optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+
+    # Create the learning rate scheduler
+    # Differ from the fixmatch paper scheduler but is in the same spirit
+    total_training_steps = len(labeled_loader) * nb_epochs
+    scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
     
     # Declare the FixMatch
-    fixmatch = FixMatch(model, device, optimizer, labeled_loader, unlabeled_loader, test_loader)
+    fixmatch = FixMatch(model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader)
 
     # start a new wandb run to track this script
-    '''
     wandb.init(
         # set the wandb project where this run will be logged
         project="ssl-cifar10",
@@ -75,16 +80,15 @@ def main():
         "epochs": nb_epochs,
         }
     )
-    '''
     
     for epoch in range(nb_epochs):
         fixmatch.train()
         test_loss, test_accuracy, test_precision, test_recall, test_f1 = evaluate(model, test_loader, device)
         print(f"Epoch: {epoch}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Test Precision: {test_precision:.4f}, Test Recall: {test_recall:.4f}, Test F1: {test_f1:.4f}")
         # log metrics to wandb
-        #wandb.log({"Test Accuracy": test_acc, "Test Loss": test_loss})
+        wandb.log({"Test Loss": test_accuracy, "Test Accuracy": test_loss, "Test Precision" : test_precision, "Test Recall" : test_recall, "Test F1" : test_f1})
         
-    torch.save(model.state_dict(), "fixmatch_wide_resnet.pth")
+    torch.save(model.state_dict(), os.path.join("models", "fixmatch_wide_resnet.pth"))
 
 if __name__ == "__main__":
     main()
