@@ -9,42 +9,42 @@ from sklearn.metrics import (
     f1_score,
 )
 import torch.nn.functional as F
+import wandb
+from torch.utils.data.dataset import Subset
 
-def evaluate(model, test_loader, device):
+def evaluate(model, data_loader, device, log_wandb):
     model.eval()
-    test_loss = 0
-    correct = 0
-    total = 0
+    loss = 0
 
     # Store true and predicted labels
     y_true = []
     y_pred = []
 
     with torch.no_grad():
-        for data, target in test_loader:
-            y_true.extend(target.cpu().numpy())
+        for data, target in data_loader:
+            y_true.extend(target.cpu().tolist())
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.cross_entropy(output, target, reduction='sum').item()
+            loss += F.cross_entropy(output, target, reduction='sum').item()
             pred = output.argmax(dim=1)
-            correct += pred.eq(target.view_as(pred)).sum().item()
-            total += target.size(0)
-            y_pred.extend(pred.cpu().numpy())
+            y_pred.extend(pred.cpu().tolist())
 
-    test_loss /= total
-    accuracy = 100.0 * correct / total
-    accuracy, precision, recall, f1 = metrics(y_true, y_pred)
-    #cm = confusion_matrix(y_true, y_pred, test_loader.dataset.classes)
+    loss /= len(data_loader.dataset)
+    classes = data_loader.dataset.dataset.classes if isinstance(data_loader.dataset, Subset) else data_loader.dataset.classes
+    accuracy, precision, recall, f1, cm = metrics(y_true, y_pred, classes, log_wandb)
+    return loss, accuracy, precision, recall, f1, cm
 
-    return test_loss, accuracy, precision, recall, f1#, cm
-
-def metrics(y_true, y_pred):
+def metrics(y_true, y_pred, labels, log_wandb):
     accuracy = accuracy_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred, average="weighted")
+    # when there are labels for which the classifier didn't predict any samples
+    precision = precision_score(y_true, y_pred, average="weighted", zero_division=1)
     recall = recall_score(y_true, y_pred, average="weighted")
     f1 = f1_score(y_true, y_pred, average="weighted")
-    return accuracy, precision, recall, f1
-
-def confusion_matrix(y_true, y_pred, labels):
-    cm = confusion_matrix(y_true, y_pred, labels=labels)
-    return cm
+    if log_wandb:
+        cm = wandb.plot.confusion_matrix(probs=None, y_true=y_true, preds=y_pred, class_names=labels)
+    else:
+        label_mapping = {i:label for i, label in enumerate(labels)}
+        y_true_label = [label_mapping[label] for label in y_true]
+        y_pred_label = [label_mapping[label] for label in y_pred]
+        cm = confusion_matrix(y_true_label, y_pred_label, labels=labels)
+    return accuracy, precision, recall, f1, cm

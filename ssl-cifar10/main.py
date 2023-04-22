@@ -37,7 +37,15 @@ def main():
     depth=28 
     widen_factor=2
     dropout_rate=0.3
+    # Goal
     num_classes=10
+    # FixMatch
+    lambda_u=1
+    threshold=0.95
+    # EMA
+    ema_decay=0.999
+    # Log
+    log_wandb = True
 
     # Set device for computation
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -65,28 +73,55 @@ def main():
     scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
     
     # Declare the FixMatch
-    fixmatch = FixMatch(model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader)
+    fixmatch = FixMatch(model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u, threshold, ema_decay)
 
     # start a new wandb run to track this script
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="ssl-cifar10",
-        
-        # track hyperparameters and run metadata
-        config={
-        "learning_rate": lr,
-        "architecture": "WideResNet-28-2",
-        "dataset": "CIFAR-10",
-        "epochs": nb_epochs,
-        }
-    )
+    if log_wandb:
+        wandb.init(
+            # set the wandb project where this run will be logged
+            project="ssl-cifar10",
+            
+            # track hyperparameters and run metadata
+            config={
+            "architecture": "WideResNet-28-2",
+            "dataset": "CIFAR-10",
+            "epochs": nb_epochs,
+            "learning_rate": lr,
+            "momentum": momentum,
+            "weight_decay": weight_decay,
+            "batch_size": batch_size,
+            "ratio_unlabeled_labeled": ratio_unlabeled_labeled,
+            "seed": seed,
+            "depth": depth,
+            "widen_factor": widen_factor,
+            "dropout_rate": dropout_rate,
+            "lambda_u": lambda_u,
+            "threshold": threshold,
+            "ema_decay": ema_decay
+            }
+        )
     
     for epoch in range(nb_epochs):
-        fixmatch.train()
-        test_loss, test_accuracy, test_precision, test_recall, test_f1 = evaluate(model, test_loader, device)
+        train_loss = fixmatch.train()
+        # Evaluate with ExponentialMovingAverage model
+        test_loss, test_accuracy, test_precision, test_recall, test_f1, test_cm = evaluate(fixmatch.ema.ema_model, test_loader, device, log_wandb)
         print(f"Epoch: {epoch}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Test Precision: {test_precision:.4f}, Test Recall: {test_recall:.4f}, Test F1: {test_f1:.4f}")
+        labeled_loss, labeled_accuracy, labeled_precision, labeled_recall, labeled_f1, labeled_cm = evaluate(fixmatch.ema.ema_model, labeled_loader, device, log_wandb)
         # log metrics to wandb
-        wandb.log({"Test Loss": test_accuracy, "Test Accuracy": test_loss, "Test Precision" : test_precision, "Test Recall" : test_recall, "Test F1" : test_f1})
+        if log_wandb:
+            wandb.log({"Train Loss": train_loss,
+                    "Test Loss": test_loss,
+                    "Test Accuracy": test_accuracy,
+                    "Test Precision": test_precision,
+                    "Test Recall": test_recall,
+                    "Test F1": test_f1,
+                    "Test Confusion Matrix": test_cm,
+                    "Train Labeled Loss": labeled_loss,
+                    "Train Labeled Accuracy": labeled_accuracy,
+                    "Train Labeled Precision": labeled_precision,
+                    "Train Labeled Recall": labeled_recall,
+                    "Train Labeled F1": labeled_f1,
+                    "Train Labeled Confusion Matrix": labeled_cm})
         
     torch.save(model.state_dict(), os.path.join("models", "fixmatch_wide_resnet.pth"))
 

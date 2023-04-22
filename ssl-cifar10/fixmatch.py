@@ -2,9 +2,10 @@
 
 import torch
 import torch.nn.functional as F
+from ema import EMA
 
 class FixMatch:
-    def __init__(self, model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u=1, threshold=0.95):
+    def __init__(self, model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u=1, threshold=0.95, ema_decay=0.999):
         self.model = model
         self.device = device
         self.optimizer = optimizer
@@ -15,15 +16,15 @@ class FixMatch:
         self.lambda_u = lambda_u
         self.threshold = threshold
         self.current_step = 0
+        self.ema = EMA(model, decay=ema_decay, device=device)
 
     def train(self):
+        train_loss = 0
         self.model.train()
         for (inputs_x, targets_x), (inputs_u_weakly_augmented, inputs_u_strongly_augmented) in zip(self.labeled_loader, self.unlabeled_loader):
             inputs_x, targets_x = inputs_x.to(self.device), targets_x.to(self.device)
             inputs_u_weakly_augmented, inputs_u_strongly_augmented = inputs_u_weakly_augmented.to(self.device).float(), inputs_u_strongly_augmented.to(self.device).float()
             
-            # Update learning rate based on cosine decay
-            self.scheduler.step()
             # Reset gradient
             self.optimizer.zero_grad()
 
@@ -48,9 +49,20 @@ class FixMatch:
             # Combine the labeled and unlabeled loss
             loss = loss_x + self.lambda_u * loss_u
 
+            # Accumulate train loss
+            train_loss += loss
+
             # Backward pass and optimization
             loss.backward()
             self.optimizer.step()
+            self.scheduler.step()
+
+            # Update the EMA model
+            self.ema.update(self.model)
             
             # Increment step counter for scheduler
             self.current_step += 1
+
+        # Return loss over the combination of labeled and unlabeled data
+        train_loss /= len(self.labeled_loader.dataset)
+        return train_loss
