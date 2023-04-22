@@ -28,7 +28,7 @@ def main():
     momentum = 0.9
     weight_decay = 5e-4
     # Training
-    nb_epochs = 3000
+    nb_epochs = 1000
     # Dataloader
     batch_size=64
     ratio_unlabeled_labeled=7
@@ -46,6 +46,7 @@ def main():
     ema_decay=0.999
     # Log
     log_wandb = True
+    check_transformations = False
 
     # Set device for computation
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,7 +55,7 @@ def main():
     download_cifar10()
     
     # Instanciate train and test sets
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=False, transform=transforms.ToTensor())
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=False)
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transforms.ToTensor())
     
     # Instanciate data loaders for WideResNet with FixMatch
@@ -73,7 +74,7 @@ def main():
     scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
     
     # Declare the FixMatch
-    fixmatch = FixMatch(model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u, threshold, ema_decay)
+    fixmatch = FixMatch(model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u, threshold, ema_decay, check_transformations)
 
     # start a new wandb run to track this script
     if log_wandb:
@@ -102,14 +103,17 @@ def main():
         )
     
     for _ in range(nb_epochs):
-        train_loss = fixmatch.train()
+        train_loss, train_loss_x, train_loss_u, train_pct_above_thresh = fixmatch.train()
 
         # Evaluate with both ExponentialMovingAverage model and original model
         models = {"Model":model, "EMA_Model":fixmatch.ema.ema_model}
         # Evaluate on data with available labels
-        data_loaders = {"Test":test_loader, "Train_Labeled":labeled_loader}
+        data_loaders = {"Test":test_loader, "Labeled":labeled_loader}
         evaluation = evaluate(models, data_loaders, device, log_wandb)
-        evaluation.update({"Model Train Loss":train_loss})
+        evaluation.update({"Model Train Loss":train_loss, 
+                           "Model Train_Labeled Loss":train_loss_x, 
+                           "Model Train_Unlabeled Loss":train_loss_u, 
+                           "Model Train_Unlabeled Pct_above_threshold":train_pct_above_thresh})
 
         # log metrics to wandb
         if log_wandb:

@@ -136,3 +136,6 @@ models/
 
 # Weights and Biases
 wandb/
+
+# Transformed images examples
+transformed_images/

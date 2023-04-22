@@ -1,6 +1,6 @@
 # Maintain a running average of the model parameters, 
 # which is computed using an exponential moving average (EMA). 
-# The EMA gives more weight to recent values, 
+# The EMA gives more weight to recent values (if decay <0.5), 
 # so the final parameters are influenced more by the recent updates. 
 # When reporting the performance of the model, 
 # they use this EMA version of the model's parameters rather than the latest parameters.
@@ -17,3 +17,5 @@ class EMA:
     def update(self, model):
         for ema_param, model_param in zip(self.ema_model.parameters(), model.parameters()):
             ema_param.data.copy_(self.decay * ema_param.data + (1.0 - self.decay) * model_param.data)
+            # Just to be sure...
+            ema_param.requires_grad = False

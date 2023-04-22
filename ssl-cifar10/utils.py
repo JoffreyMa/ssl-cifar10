@@ -5,10 +5,33 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from dataset import AutoAugmentedDataset, WeakStrongAugmentDataset
+import os
+
+def save_transformed_images(image_tensors, output_dir, prefix):
+    to_pil_image = transforms.ToPILImage()
+
+    # Check if the output folder exists and create it if necessary
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Iterate through the image tensors in the batch
+    for i, image_tensor in enumerate(image_tensors):
+        # Convert the image tensor to a PIL image
+        pil_transformed_image = to_pil_image(image_tensor.cpu())
+
+        # Save the PIL image to the output directory with a unique name based on the prefix and index
+        output_name = f"{prefix}_{i}.png"
+        pil_transformed_image.save(os.path.join(output_dir, output_name))
 
 def RandMagAugment(num_ops, magnitude_max, num_magnitude_bins):
     rand_mag = np.random.randint(1, magnitude_max)
     return transforms.RandAugment(num_ops=num_ops, magnitude=rand_mag, num_magnitude_bins=num_magnitude_bins)
+
+def RandErasing(ratio_range):
+    # Sightly different from the original paper
+    # Erase either 10, 20, 30 percent of the image
+    rand_scale = 0.10 * np.random.randint(low=1, high=4, size=1)[0]
+    return transforms.RandomErasing(p=1, scale=(rand_scale, rand_scale), ratio=ratio_range)
 
 def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, seed):
     # Set the random seeds for reproducible behavior
@@ -27,7 +50,7 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
         # https://pytorch.org/vision/main/_modules/torchvision/transforms/autoaugment.html#RandAugment
         RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 31),
         transforms.PILToTensor(),
-        transforms.RandomErasing(p=1, scale=(0.01, 0.75), ratio=(0.3, 3.3))
+        RandErasing(ratio_range = (0.5, 5))
     ])
 
     # Select 250 random annotated images
