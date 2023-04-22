@@ -6,6 +6,10 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from dataset import AutoAugmentedDataset, WeakStrongAugmentDataset
 
+def RandMagAugment(num_ops, magnitude_max, num_magnitude_bins):
+    rand_mag = np.random.randint(1, magnitude_max)
+    return transforms.RandAugment(num_ops=num_ops, magnitude=rand_mag, num_magnitude_bins=num_magnitude_bins)
+
 def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, seed):
     # Set the random seeds for reproducible behavior
     np.random.seed(seed)
@@ -18,7 +22,7 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
     strong_transform = transforms.Compose([
         # Pytorch RandAugment does approximately the same as in the fixmatch paper  
         # https://pytorch.org/vision/main/_modules/torchvision/transforms/autoaugment.html#RandAugment
-        transforms.RandAugment(num_ops=2, magnitude = 9, num_magnitude_bins= 31)
+        RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 31)
     ])
 
     # Select 250 random annotated images
