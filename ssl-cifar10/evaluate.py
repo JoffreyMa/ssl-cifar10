@@ -12,7 +12,22 @@ import torch.nn.functional as F
 import wandb
 from torch.utils.data.dataset import Subset
 
-def evaluate(model, data_loader, device, log_wandb):
+def evaluate(models, data_loaders, device, log_wandb):
+    evaluation = dict()
+    for model_name in models:
+        for data_loader_name in data_loaders:
+            loss, accuracy, precision, recall, f1, cm = _evaluate(models[model_name], data_loaders[data_loader_name], device, log_wandb)
+            prefix = f"{model_name} {data_loader_name}"
+            evaluation.update({f"{prefix} Loss":loss, 
+                               f"{prefix} Accuracy":accuracy, 
+                               f"{prefix} Precision":precision, 
+                               f"{prefix} Recall":recall, 
+                               f"{prefix} F1":f1, 
+                               f"{prefix} Confusion Matrix":cm})
+    return evaluation
+
+
+def _evaluate(model, data_loader, device, log_wandb):
     model.eval()
     loss = 0
 

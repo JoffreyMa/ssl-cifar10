@@ -28,9 +28,9 @@ def main():
     momentum = 0.9
     weight_decay = 5e-4
     # Training
-    nb_epochs = 1000
+    nb_epochs = 3000
     # Dataloader
-    batch_size=50
+    batch_size=64
     ratio_unlabeled_labeled=7
     seed=42
     # Model
@@ -101,27 +101,19 @@ def main():
             }
         )
     
-    for epoch in range(nb_epochs):
+    for _ in range(nb_epochs):
         train_loss = fixmatch.train()
-        # Evaluate with ExponentialMovingAverage model
-        test_loss, test_accuracy, test_precision, test_recall, test_f1, test_cm = evaluate(fixmatch.ema.ema_model, test_loader, device, log_wandb)
-        print(f"Epoch: {epoch}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Test Precision: {test_precision:.4f}, Test Recall: {test_recall:.4f}, Test F1: {test_f1:.4f}")
-        labeled_loss, labeled_accuracy, labeled_precision, labeled_recall, labeled_f1, labeled_cm = evaluate(fixmatch.ema.ema_model, labeled_loader, device, log_wandb)
+
+        # Evaluate with both ExponentialMovingAverage model and original model
+        models = {"Model":model, "EMA_Model":fixmatch.ema.ema_model}
+        # Evaluate on data with available labels
+        data_loaders = {"Test":test_loader, "Train_Labeled":labeled_loader}
+        evaluation = evaluate(models, data_loaders, device, log_wandb)
+        evaluation.update({"Model Train Loss":train_loss})
+
         # log metrics to wandb
         if log_wandb:
-            wandb.log({"Train Loss": train_loss,
-                    "Test Loss": test_loss,
-                    "Test Accuracy": test_accuracy,
-                    "Test Precision": test_precision,
-                    "Test Recall": test_recall,
-                    "Test F1": test_f1,
-                    "Test Confusion Matrix": test_cm,
-                    "Train Labeled Loss": labeled_loss,
-                    "Train Labeled Accuracy": labeled_accuracy,
-                    "Train Labeled Precision": labeled_precision,
-                    "Train Labeled Recall": labeled_recall,
-                    "Train Labeled F1": labeled_f1,
-                    "Train Labeled Confusion Matrix": labeled_cm})
+            wandb.log(evaluation)
         
     torch.save(model.state_dict(), os.path.join("models", "fixmatch_wide_resnet.pth"))
 
