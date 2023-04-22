@@ -16,13 +16,18 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
     torch.manual_seed(seed)
 
     # Define weak and strong augmentations
+    # flip-and-shift data augmentation
     weak_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip()
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1))
     ])
+    # RandAugment & Erasing
     strong_transform = transforms.Compose([
         # Pytorch RandAugment does approximately the same as in the fixmatch paper  
         # https://pytorch.org/vision/main/_modules/torchvision/transforms/autoaugment.html#RandAugment
-        RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 31)
+        RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 31),
+        transforms.PILToTensor(),
+        transforms.RandomErasing(p=1, scale=(0.01, 0.75), ratio=(0.3, 3.3))
     ])
 
     # Select 250 random annotated images
