@@ -7,18 +7,10 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
 from wide_resnet import WideResNet
 from fixmatch import FixMatch
-from utils import create_data_loaders
+from utils import create_data_loaders, download_cifar10
 from evaluate import evaluate
 import wandb
 from torch.optim.lr_scheduler import CosineAnnealingLR
-
-def download_cifar10(path='./data'):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    if not os.path.exists(os.path.join(path, 'cifar-10-batches-py')):
-        _ = torchvision.datasets.CIFAR10(root=path, train=True, download=True)
-        _ = torchvision.datasets.CIFAR10(root=path, train=False, download=True)
 
 
 def main():

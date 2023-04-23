@@ -6,6 +6,17 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from dataset import AutoAugmentedDataset, WeakStrongAugmentDataset
 import os
+import torchvision
+
+
+def download_cifar10(path='./data'):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    if not os.path.exists(os.path.join(path, 'cifar-10-batches-py')):
+        _ = torchvision.datasets.CIFAR10(root=path, train=True, download=True)
+        _ = torchvision.datasets.CIFAR10(root=path, train=False, download=True)
+
 
 def save_transformed_images(image_tensors, output_dir, prefix):
     to_pil_image = transforms.ToPILImage()
@@ -23,15 +34,18 @@ def save_transformed_images(image_tensors, output_dir, prefix):
         output_name = f"{prefix}_{i}.png"
         pil_transformed_image.save(os.path.join(output_dir, output_name))
 
+
 def RandMagAugment(num_ops, magnitude_max, num_magnitude_bins):
     rand_mag = np.random.randint(1, magnitude_max)
     return transforms.RandAugment(num_ops=num_ops, magnitude=rand_mag, num_magnitude_bins=num_magnitude_bins)
+
 
 def RandErasing(ratio_range):
     # Sightly different from the original paper
     # Erase either 10, 20, 30 percent of the image
     rand_scale = 0.10 * np.random.randint(low=1, high=4, size=1)[0]
     return transforms.RandomErasing(p=1, scale=(rand_scale, rand_scale), ratio=ratio_range)
+
 
 def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, seed):
     # Set the random seeds for reproducible behavior
