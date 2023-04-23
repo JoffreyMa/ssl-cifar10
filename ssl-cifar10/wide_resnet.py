@@ -174,8 +174,7 @@ if __name__ == "__main__":
     # Training loop
     for epoch in range(nb_epochs):
         train_loss, train_acc = train(model, train_loader, optimizer, device)
-        print(f"Epoch {epoch + 1}/{nb_epochs}, Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}")
-
+        
         # Evaluate the model on the test set and print the results
         evaluation = evaluate({"Model":model}, {"Test":test_loader}, device, log_wandb)
         evaluation.update({"Model Train Loss":train_loss, 

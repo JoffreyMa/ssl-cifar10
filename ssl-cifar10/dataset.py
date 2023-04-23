@@ -1,4 +1,5 @@
 from torch import Tensor
+from torch.nn import Identity
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from PIL import Image
@@ -9,7 +10,8 @@ class AutoAugmentedDataset(Dataset):
         self.labels = labels
         self.classes = classes
         # Base augmentation for all data
-        self.transform = transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10)
+        #self.transform = transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10)
+        self.transform = Identity() # To do no base augmentation
         self.to_tensor = transforms.ToTensor()
 
     def __getitem__(self, index):

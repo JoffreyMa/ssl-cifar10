@@ -26,13 +26,11 @@ class FixMatch:
         train_loss_x = 0
         train_loss_u = 0
         train_pct_above_thresh = 0
-        ratio_unlabeled_labeled = 0
 
         self.model.train()
         for i, ((inputs_x, targets_x), (inputs_u_weakly_augmented, inputs_u_strongly_augmented)) in enumerate(zip(self.labeled_loader, self.unlabeled_loader)):
             # Save first batch for each type to check augmentations
             if i==0:
-                ratio_unlabeled_labeled = len(inputs_u_weakly_augmented)/len(inputs_x)
                 if self.check_transformations:
                     save_transformed_images(inputs_x, output_dir=self.transformed_img_dir, prefix=f"input_x")
                     save_transformed_images(inputs_u_weakly_augmented, output_dir=self.transformed_img_dir, prefix=f"input_u_weakly_augmented")
@@ -53,8 +51,11 @@ class FixMatch:
             logits_u_weakly_augmented = self.model(inputs_u_weakly_augmented)
             logits_u_strongly_augmented = self.model(inputs_u_strongly_augmented)
 
-            # Apply the sharpening function
-            max_probs, pseudo_labels = torch.max(logits_u_weakly_augmented, dim=-1)
+            # Calculate unlabeled probabilities then determine pseudo-labels
+            # No need to backpropagate the thresholding operations ?
+            with torch.no_grad():
+                probs_u_weakly_augmented = F.softmax(logits_u_weakly_augmented, dim=-1)
+            max_probs, pseudo_labels = torch.max(probs_u_weakly_augmented, dim=-1)
             
             # Select only samples with confidence above the threshold
             mask = max_probs.ge(self.threshold).float()
@@ -71,7 +72,7 @@ class FixMatch:
             train_loss_x += loss_x
             train_loss_u += loss_u
             # Accumulate the samples with confidence above threshold
-            train_pct_above_thresh += torch.mean(mask).cpu().tolist()
+            train_pct_above_thresh += (mask).mean().cpu().tolist()
 
             # Backward pass and optimization
             loss.backward()
@@ -84,13 +85,13 @@ class FixMatch:
             # Increment step counter for scheduler
             self.current_step += 1
 
-        # Return metrics to follow
+        # Return metrics to follow per batch
         # loss over the combination of labeled and unlabeled data
         # loss for the labeled part
         # loss for the unlabeled part
         # part of samples with confidence above threshold 
-        train_loss /= len(self.labeled_loader.dataset) + self.lambda_u * ratio_unlabeled_labeled * len(self.labeled_loader.dataset)
-        train_loss_x /= len(self.labeled_loader.dataset)
-        train_loss_u /= ratio_unlabeled_labeled * len(self.labeled_loader.dataset)
-        train_pct_above_thresh /= ratio_unlabeled_labeled * len(self.labeled_loader.dataset)
+        train_loss /= len(self.labeled_loader)
+        train_loss_x /= len(self.labeled_loader)
+        train_loss_u /= len(self.labeled_loader)
+        train_pct_above_thresh /= len(self.labeled_loader)
         return train_loss, train_loss_x, train_loss_u, train_pct_above_thresh

@@ -10,7 +10,7 @@ from fixmatch import FixMatch
 from utils import create_data_loaders, download_cifar10
 from evaluate import evaluate
 import wandb
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR
 
 
 def main():
@@ -58,12 +58,14 @@ def main():
     model.to(device)
     
     # Declare the optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay, nesterov=True)
 
     # Create the learning rate scheduler
     # Differ from the fixmatch paper scheduler but is in the same spirit
     total_training_steps = len(labeled_loader) * nb_epochs
-    scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
+    #scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
+    scheduler = LinearLR(optimizer) # Should also work even though not as well
+
     
     # Declare the FixMatch
     fixmatch = FixMatch(model, device, optimizer, scheduler, labeled_loader, unlabeled_loader, test_loader, lambda_u, threshold, ema_decay, check_transformations)

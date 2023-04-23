@@ -40,18 +40,18 @@ def _evaluate(model, data_loader, device, log_wandb):
             y_true.extend(target.cpu().tolist())
             data, target = data.to(device), target.to(device)
             output = model(data)
-            loss += F.cross_entropy(output, target, reduction='sum').item()
+            loss += F.cross_entropy(output, target, reduction='mean').item()
             pred = output.argmax(dim=1)
             y_pred.extend(pred.cpu().tolist())
 
-    loss /= len(data_loader.dataset)
+    loss /= len(data_loader)
     classes = data_loader.dataset.dataset.classes if isinstance(data_loader.dataset, Subset) else data_loader.dataset.classes
     accuracy, precision, recall, f1, cm = metrics(y_true, y_pred, classes, log_wandb)
     return loss, accuracy, precision, recall, f1, cm
 
 def metrics(y_true, y_pred, labels, log_wandb):
     accuracy = accuracy_score(y_true, y_pred)
-    # when there are labels for which the classifier didn't predict any samples
+    # zero_division when there are labels for which the classifier didn't predict any samples
     precision = precision_score(y_true, y_pred, average="weighted", zero_division=1)
     recall = recall_score(y_true, y_pred, average="weighted")
     f1 = f1_score(y_true, y_pred, average="weighted")
