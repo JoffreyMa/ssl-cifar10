@@ -37,7 +37,7 @@ def main():
     # EMA
     ema_decay=0.999
     # Log
-    log_wandb = True
+    log_wandb = False
     check_transformations = False
 
     # Set device for computation
@@ -63,8 +63,7 @@ def main():
     # Create the learning rate scheduler
     # Differ from the fixmatch paper scheduler but is in the same spirit
     total_training_steps = len(labeled_loader) * nb_epochs
-    #scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
-    scheduler = LinearLR(optimizer) # Should also work even though not as well
+    scheduler = CosineAnnealingLR(optimizer, T_max=total_training_steps, eta_min=0, last_epoch=-1)
 
     
     # Declare the FixMatch
@@ -108,12 +107,17 @@ def main():
                            "Model Train_Labeled Loss":train_loss_x, 
                            "Model Train_Unlabeled Loss":train_loss_u, 
                            "Model Train_Unlabeled Pct_above_threshold":train_pct_above_thresh})
-
+        
         # log metrics to wandb
         if log_wandb:
             wandb.log(evaluation)
-        
-    torch.save(model.state_dict(), os.path.join("models", "fixmatch_wide_resnet.pth"))
+        else:
+            print(f"Train Loss: {train_loss}, \
+                  Train PctAboveThreshold: {train_pct_above_thresh}, \
+                  Test Loss: {evaluation['Model Test Loss']}, \
+                  Test Accuracy: {evaluation['Model Test Accuracy']}")
+            
+    torch.save(model.state_dict(), os.path.join("models", "fixmatch_wide_resnet_perso.pth"))
 
 if __name__ == "__main__":
     main()

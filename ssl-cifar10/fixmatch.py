@@ -27,7 +27,10 @@ class FixMatch:
         train_loss_u = 0
         train_pct_above_thresh = 0
 
+        # Prepare for training
         self.model.train()
+        self.model.zero_grad()
+
         for i, ((inputs_x, targets_x), (inputs_u_weakly_augmented, inputs_u_strongly_augmented)) in enumerate(zip(self.labeled_loader, self.unlabeled_loader)):
             # Save first batch for each type to check augmentations
             if i==0:
@@ -39,22 +42,22 @@ class FixMatch:
             # Transfer to device
             inputs_x, targets_x = inputs_x.to(self.device), targets_x.to(self.device)
             inputs_u_weakly_augmented, inputs_u_strongly_augmented = inputs_u_weakly_augmented.to(self.device).float(), inputs_u_strongly_augmented.to(self.device).float()
-            
-            # Reset gradient
-            self.optimizer.zero_grad()
 
             # Forward pass for labeled data
             logits_x = self.model(inputs_x)
             loss_x = F.cross_entropy(logits_x, targets_x)
 
             # Forward pass for unlabeled data
-            logits_u_weakly_augmented = self.model(inputs_u_weakly_augmented)
-            logits_u_strongly_augmented = self.model(inputs_u_strongly_augmented)
+            # In Exponential Moving Average Normalization for Self-supervised and Semi-supervised Learning
+            # they say to do both at the same time, don't really know why, might be more efficient/parallelized
+            # Concatenate weakly and strongly augmented images
+            inputs_u_combined = torch.cat([inputs_u_weakly_augmented, inputs_u_strongly_augmented], dim=0)
+            logits_u_combined = self.model(inputs_u_combined)
+            logits_u_weakly_augmented, logits_u_strongly_augmented = torch.split(logits_u_combined, inputs_u_weakly_augmented.shape[0], dim=0)
 
             # Calculate unlabeled probabilities then determine pseudo-labels
             # No need to backpropagate the thresholding operations ?
-            with torch.no_grad():
-                probs_u_weakly_augmented = F.softmax(logits_u_weakly_augmented, dim=-1)
+            probs_u_weakly_augmented = F.softmax(logits_u_weakly_augmented.detach(), dim=-1)
             max_probs, pseudo_labels = torch.max(probs_u_weakly_augmented, dim=-1)
             
             # Select only samples with confidence above the threshold
@@ -81,7 +84,10 @@ class FixMatch:
 
             # Update the EMA model
             self.ema.update(self.model)
-            
+
+            # Reset gradient
+            self.model.zero_grad()
+
             # Increment step counter for scheduler
             self.current_step += 1
 

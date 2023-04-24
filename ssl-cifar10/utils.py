@@ -42,8 +42,8 @@ def RandMagAugment(num_ops, magnitude_max, num_magnitude_bins):
 
 def RandErasing(ratio_range):
     # Sightly different from the original paper
-    # Erase either 10, 20, 30 percent of the image
-    rand_scale = 0.10 * np.random.randint(low=1, high=4, size=1)[0]
+    # Erase either 5, 10, 15 percent of the image
+    rand_scale = 0.05 * np.random.randint(low=1, high=4, size=1)[0]
     return transforms.RandomErasing(p=1, scale=(rand_scale, rand_scale), ratio=ratio_range)
 
 
@@ -62,8 +62,9 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
     strong_transform = transforms.Compose([
         # Pytorch RandAugment does approximately the same as in the fixmatch paper  
         # https://pytorch.org/vision/main/_modules/torchvision/transforms/autoaugment.html#RandAugment
-        RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 31),
-        transforms.PILToTensor(),
+        RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 10),
+        transforms.PILToTensor(), # does not scale !
+        transforms.ConvertImageDtype(torch.float32), # scales !
         RandErasing(ratio_range = (0.5, 5))
     ])
 

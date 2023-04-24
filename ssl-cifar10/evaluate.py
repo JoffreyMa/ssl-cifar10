@@ -44,10 +44,10 @@ def _evaluate(model, data_loader, device, log_wandb):
             pred = output.argmax(dim=1)
             y_pred.extend(pred.cpu().tolist())
 
-    loss /= len(data_loader)
-    classes = data_loader.dataset.dataset.classes if isinstance(data_loader.dataset, Subset) else data_loader.dataset.classes
-    accuracy, precision, recall, f1, cm = metrics(y_true, y_pred, classes, log_wandb)
-    return loss, accuracy, precision, recall, f1, cm
+        loss /= len(data_loader)
+        classes = data_loader.dataset.dataset.classes if isinstance(data_loader.dataset, Subset) else data_loader.dataset.classes
+        accuracy, precision, recall, f1, cm = metrics(y_true, y_pred, classes, log_wandb)
+        return loss, accuracy, precision, recall, f1, cm
 
 def metrics(y_true, y_pred, labels, log_wandb):
     accuracy = accuracy_score(y_true, y_pred)

@@ -11,6 +11,7 @@ from utils import AutoAugmentedDataset, download_cifar10
 from evaluate import evaluate
 import wandb
 import os
+import numpy as np
 
 
 class BasicBlock(nn.Module):
@@ -52,10 +53,10 @@ class WideResNet(nn.Module):
         self.fc = nn.Linear(n_channels[3], num_classes)
 
         for m in self.modules():
+            # Taken from https://github.com/meliketoy/wide-resnet.pytorch/blob/292b3ede0651e349dd566f9c23408aa572f1bd92/networks/wide_resnet.py
             if isinstance(m, nn.Conv2d):
-                init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
+                init.xavier_uniform_(m.weight, gain=np.sqrt(2))
+                init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
                 init.constant_(m.weight, 1)
                 init.constant_(m.bias, 0)
