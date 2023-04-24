@@ -140,5 +140,5 @@ wandb/
 # Transformed images examples
 transformed_images/
 
-# Report
-report/
+# Report images
+report/images/
