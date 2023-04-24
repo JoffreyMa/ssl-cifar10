@@ -1,9 +1,4 @@
-# Maintain a running average of the model parameters, 
-# which is computed using an exponential moving average (EMA). 
-# The EMA gives more weight to recent values (if decay <0.5), 
-# so the final parameters are influenced more by the recent updates. 
-# When reporting the performance of the model, 
-# they use this EMA version of the model's parameters rather than the latest parameters.
+# Could entirely be replaced using Averaged Model (https://pytorch.org/docs/stable/optim.html#custom-averaging-strategies)
 
 import copy
 import torch

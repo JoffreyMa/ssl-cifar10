@@ -23,7 +23,7 @@ def main():
     nb_epochs = 1000
     # Dataloader
     batch_size=64
-    ratio_unlabeled_labeled=7
+    ratio_unlabeled_labeled=3
     seed=42
     # Model
     depth=28 
@@ -33,9 +33,9 @@ def main():
     num_classes=10
     # FixMatch
     lambda_u=1
-    threshold=0.95
+    threshold=0.35
     # EMA
-    ema_decay=0.999
+    ema_decay=0.333
     # Log
     log_wandb = False
     check_transformations = False

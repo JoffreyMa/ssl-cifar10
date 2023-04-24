@@ -35,8 +35,11 @@ Directories in this repository are organized as follows.
 * data: Host the CIFAR-10 dataset when downloaded
 * models: Contains the trained models
 * ssl-cifar10: Scripts of the project
+* report: **Report of the project and its images**
 * venv: Virtual environment, I advise you create a venv.
 * wandb: Location of wandb log files, similarly to the runs directory of Tensorboard.
+
+Check out report/report.ipynb to see the evolution of the project results.
 
 ## Files
 
