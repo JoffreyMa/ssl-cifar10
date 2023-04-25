@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # Parameters
     # Optimizer
     lr = 0.03
-    momentum = 0.9
+    momentum = 0.8
     weight_decay = 5e-4
     # Training
     nb_epochs = 100

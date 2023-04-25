@@ -70,13 +70,6 @@ class FixMatch:
             # Combine the labeled and unlabeled loss
             loss = loss_x + self.lambda_u * loss_u
 
-            # Accumulate train loss
-            train_loss += loss
-            train_loss_x += loss_x
-            train_loss_u += loss_u
-            # Accumulate the samples with confidence above threshold
-            train_pct_above_thresh += (mask).mean().cpu().tolist()
-
             # Backward pass and optimization
             loss.backward()
             self.optimizer.step()
@@ -87,6 +80,13 @@ class FixMatch:
 
             # Reset gradient
             self.model.zero_grad()
+
+            # Accumulate train loss
+            train_loss += loss
+            train_loss_x += loss_x
+            train_loss_u += loss_u
+            # Accumulate the samples with confidence above threshold
+            train_pct_above_thresh += (mask).mean().cpu().tolist()
 
             # Increment step counter for scheduler
             self.current_step += 1
