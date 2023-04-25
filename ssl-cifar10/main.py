@@ -20,11 +20,12 @@ def main():
     momentum = 0.9
     weight_decay = 5e-4
     # Training
-    nb_epochs = 1000
+    nb_epochs = 1024
+    nb_steps = 1024
     # Dataloader
     batch_size=64
     ratio_unlabeled_labeled=7
-    seed=42
+    seed=5
     # Model
     depth=28 
     widen_factor=2
@@ -37,11 +38,11 @@ def main():
     # EMA
     ema_decay=0.999
     # Log
-    log_wandb = False
+    log_wandb = True
     check_transformations = False
 
     # Set device for computation
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
     # Download data if necessary
     download_cifar10()
@@ -51,7 +52,7 @@ def main():
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transforms.ToTensor())
     
     # Instanciate data loaders for WideResNet with FixMatch
-    labeled_loader, unlabeled_loader, test_loader = create_data_loaders(trainset, testset, batch_size=batch_size, ratio_unlabeled_labeled=ratio_unlabeled_labeled, seed=seed)
+    labeled_loader, unlabeled_loader, test_loader = create_data_loaders(trainset, testset, batch_size=batch_size, ratio_unlabeled_labeled=ratio_unlabeled_labeled, nb_steps=nb_steps, seed=seed)
     
     # Declare WideResNet
     model = WideResNet(depth=depth, widen_factor=widen_factor, dropout_rate=dropout_rate, num_classes=num_classes)
@@ -106,7 +107,9 @@ def main():
         evaluation.update({"Model Train Loss":train_loss, 
                            "Model Train_Labeled Loss":train_loss_x, 
                            "Model Train_Unlabeled Loss":train_loss_u, 
-                           "Model Train_Unlabeled Pct_above_threshold":train_pct_above_thresh})
+                           "Model Train_Unlabeled Pct_above_threshold":train_pct_above_thresh,
+                           "Learning rate":optimizer.param_groups[0]["lr"],
+                           "Current step": fixmatch.current_step})
         
         # log metrics to wandb
         if log_wandb:

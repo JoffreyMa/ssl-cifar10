@@ -47,7 +47,7 @@ def RandErasing(ratio_range):
     return transforms.RandomErasing(p=1, scale=(rand_scale, rand_scale), ratio=ratio_range)
 
 
-def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, seed):
+def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, nb_steps, seed):
     # Set the random seeds for reproducible behavior
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -70,13 +70,13 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
 
     # Select 250 random annotated images
     indices = np.random.choice(len(trainset), 250, replace=False)
-    auto_augmented_data = AutoAugmentedDataset(trainset.data, trainset.targets, trainset.classes)
+    auto_augmented_data = AutoAugmentedDataset(trainset.data, trainset.targets, trainset.classes, nb_steps, batch_size)
     annotated_data = torch.utils.data.Subset(auto_augmented_data, indices)
 
     # Exclude these 250 images from the non-annotated dataset
     mask = np.ones(len(trainset), dtype=bool)
     mask[indices] = False
-    weak_strong_augmented_data = WeakStrongAugmentDataset(trainset.data, trainset.classes, weak_transform, strong_transform)
+    weak_strong_augmented_data = WeakStrongAugmentDataset(trainset.data, trainset.classes, weak_transform, strong_transform, batch_size)
     non_annotated_data = torch.utils.data.Subset(weak_strong_augmented_data, np.arange(len(weak_strong_augmented_data))[mask])
     
     # Create data loaders
