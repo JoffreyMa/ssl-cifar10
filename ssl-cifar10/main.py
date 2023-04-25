@@ -3,29 +3,28 @@
 import os
 import torch
 import torchvision
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Dataset
 from wide_resnet import WideResNet
 from fixmatch import FixMatch
 from utils import create_data_loaders, download_cifar10
 from evaluate import evaluate
 import wandb
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from dataset import PILToScaledTensor
 
 
 def main():
     # Parameters
     # Optimizer
-    lr = 0.03
+    lr = 0.02
     momentum = 0.9
     weight_decay = 5e-4
     # Training
     nb_epochs = 1024
-    nb_steps = 1024
+    nb_steps_per_epoch = 1024
     # Dataloader
     batch_size=64
     ratio_unlabeled_labeled=7
-    seed=5
+    seed=7
     # Model
     depth=28 
     widen_factor=2
@@ -38,21 +37,21 @@ def main():
     # EMA
     ema_decay=0.999
     # Log
-    log_wandb = True
+    log_wandb = False
     check_transformations = False
 
     # Set device for computation
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Download data if necessary
     download_cifar10()
     
     # Instanciate train and test sets
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=False)
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transforms.ToTensor())
+    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=PILToScaledTensor())
     
     # Instanciate data loaders for WideResNet with FixMatch
-    labeled_loader, unlabeled_loader, test_loader = create_data_loaders(trainset, testset, batch_size=batch_size, ratio_unlabeled_labeled=ratio_unlabeled_labeled, nb_steps=nb_steps, seed=seed)
+    labeled_loader, unlabeled_loader, test_loader = create_data_loaders(trainset, testset, batch_size=batch_size, ratio_unlabeled_labeled=ratio_unlabeled_labeled, nb_steps=nb_steps_per_epoch, seed=seed)
     
     # Declare WideResNet
     model = WideResNet(depth=depth, widen_factor=widen_factor, dropout_rate=dropout_rate, num_classes=num_classes)

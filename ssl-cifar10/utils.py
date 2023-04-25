@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from dataset import AutoAugmentedDataset, WeakStrongAugmentDataset
 import os
 import torchvision
+from dataset import PILToScaledTensor
 
 
 def download_cifar10(path='./data'):
@@ -63,8 +64,7 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
         # Pytorch RandAugment does approximately the same as in the fixmatch paper  
         # https://pytorch.org/vision/main/_modules/torchvision/transforms/autoaugment.html#RandAugment
         RandMagAugment(num_ops=2, magnitude_max = 10, num_magnitude_bins= 10),
-        transforms.PILToTensor(), # does not scale !
-        transforms.ConvertImageDtype(torch.float32), # scales !
+        PILToScaledTensor(), # Has to be done before erasing
         RandErasing(ratio_range = (0.5, 5))
     ])
 
@@ -78,8 +78,8 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
     weak_strong_augmented_data = WeakStrongAugmentDataset(trainset.data[mask], trainset.classes, weak_transform, strong_transform, ratio_unlabeled_labeled*batch_size)
 
     # Create data loaders
-    annotated_loader = DataLoader(auto_augmented_data, batch_size=batch_size, shuffle=True, num_workers=2)
-    non_annotated_loader = DataLoader(weak_strong_augmented_data, batch_size=ratio_unlabeled_labeled*batch_size, shuffle=True, num_workers=2)
-    test_loader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+    annotated_loader = DataLoader(auto_augmented_data, batch_size=batch_size, shuffle=True, num_workers=4)
+    non_annotated_loader = DataLoader(weak_strong_augmented_data, batch_size=ratio_unlabeled_labeled*batch_size, shuffle=True, num_workers=4)
+    test_loader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=4)
 
     return annotated_loader, non_annotated_loader, test_loader

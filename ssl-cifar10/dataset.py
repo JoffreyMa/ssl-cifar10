@@ -1,8 +1,14 @@
-from torch import Tensor
+from torch import Tensor, float32
 from torch.nn import Identity
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
 from PIL import Image
+import torchvision.transforms as transforms
+
+
+def PILToScaledTensor():
+    # PILToTensor does not scale  but Convert does
+    return transforms.Compose([transforms.PILToTensor(), transforms.ConvertImageDtype(float32)])
+
 
 class AutoAugmentedDataset(Dataset):
     def __init__(self, data, labels, classes, nb_steps, batch_size):
@@ -14,7 +20,7 @@ class AutoAugmentedDataset(Dataset):
         # Base augmentation for all data
         #self.transform = transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10)
         self.transform = Identity() # To do no base augmentation
-        self.to_tensor = transforms.ToTensor()
+        self.to_tensor = PILToScaledTensor()
 
     def __getitem__(self, index):
         # Get the data and label at the specified index
@@ -41,6 +47,7 @@ class WeakStrongAugmentDataset(AutoAugmentedDataset):
         img = self.transform(img)
         weakly_transformed_img = self.weak_transform(img)
         strongly_transformed_img = self.strong_transform(img)
+        # Checks if tensors already, because it could change with the transformations 
         weakly_transformed_img = weakly_transformed_img if isinstance(weakly_transformed_img, Tensor) else self.to_tensor(weakly_transformed_img)
         strongly_transformed_img = strongly_transformed_img if isinstance(strongly_transformed_img, Tensor) else self.to_tensor(strongly_transformed_img)
         return weakly_transformed_img, strongly_transformed_img
