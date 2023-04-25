@@ -24,13 +24,8 @@ def main():
     nb_steps = 1024
     # Dataloader
     batch_size=64
-<<<<<<< HEAD
     ratio_unlabeled_labeled=7
     seed=5
-=======
-    ratio_unlabeled_labeled=3
-    seed=42
->>>>>>> 0a80fda16b06462aa83e3280401c6c9082cfb35d
     # Model
     depth=28 
     widen_factor=2
@@ -39,9 +34,9 @@ def main():
     num_classes=10
     # FixMatch
     lambda_u=1
-    threshold=0.35
+    threshold=0.95
     # EMA
-    ema_decay=0.333
+    ema_decay=0.999
     # Log
     log_wandb = True
     check_transformations = False

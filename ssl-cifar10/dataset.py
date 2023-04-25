@@ -36,7 +36,8 @@ class WeakStrongAugmentDataset(AutoAugmentedDataset):
 
     def __getitem__(self, index):
         # Get the data and label at the specified index
-        img = Image.fromarray(self.data[index])
+        modulo_index = index%len(self.data)
+        img = Image.fromarray(self.data[modulo_index])
         img = self.transform(img)
         weakly_transformed_img = self.weak_transform(img)
         strongly_transformed_img = self.strong_transform(img)
@@ -45,4 +46,4 @@ class WeakStrongAugmentDataset(AutoAugmentedDataset):
         return weakly_transformed_img, strongly_transformed_img
 
     def __len__(self):
-        return len(self.data)
+        return self.nb_steps*self.batch_size

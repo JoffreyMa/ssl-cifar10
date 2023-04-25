@@ -70,18 +70,16 @@ def create_data_loaders(trainset, testset, batch_size, ratio_unlabeled_labeled, 
 
     # Select 250 random annotated images
     indices = np.random.choice(len(trainset), 250, replace=False)
-    auto_augmented_data = AutoAugmentedDataset(trainset.data, trainset.targets, trainset.classes, nb_steps, batch_size)
-    annotated_data = torch.utils.data.Subset(auto_augmented_data, indices)
+    auto_augmented_data = AutoAugmentedDataset(trainset.data[indices], trainset.targets, trainset.classes, nb_steps, batch_size)
 
     # Exclude these 250 images from the non-annotated dataset
     mask = np.ones(len(trainset), dtype=bool)
     mask[indices] = False
-    weak_strong_augmented_data = WeakStrongAugmentDataset(trainset.data, trainset.classes, weak_transform, strong_transform, batch_size)
-    non_annotated_data = torch.utils.data.Subset(weak_strong_augmented_data, np.arange(len(weak_strong_augmented_data))[mask])
-    
+    weak_strong_augmented_data = WeakStrongAugmentDataset(trainset.data[mask], trainset.classes, weak_transform, strong_transform, ratio_unlabeled_labeled*batch_size)
+
     # Create data loaders
-    annotated_loader = DataLoader(annotated_data, batch_size=batch_size, shuffle=True, num_workers=2)
-    non_annotated_loader = DataLoader(non_annotated_data, batch_size=ratio_unlabeled_labeled*batch_size, shuffle=True, num_workers=2)
+    annotated_loader = DataLoader(auto_augmented_data, batch_size=batch_size, shuffle=True, num_workers=2)
+    non_annotated_loader = DataLoader(weak_strong_augmented_data, batch_size=ratio_unlabeled_labeled*batch_size, shuffle=True, num_workers=2)
     test_loader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
 
     return annotated_loader, non_annotated_loader, test_loader
